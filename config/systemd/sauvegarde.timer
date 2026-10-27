@@ -1,8 +1,10 @@
+# B2 — déclenchement quotidien de sauvegarde.service
 [Unit]
 Description=Sauvegarde quotidienne
 
 [Timer]
 OnCalendar=*-*-* 02:30:00
+# VM éteinte à 2 h 30 : la sauvegarde est lancée au démarrage suivant
 Persistent=true
 
 [Install]

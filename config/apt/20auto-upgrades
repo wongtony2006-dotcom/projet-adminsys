@@ -1,2 +1,4 @@
+// D1 — rafraîchir la liste des paquets et appliquer les mises à jour chaque jour.
+// Les origines autorisées (Debian-Security) sont celles de 50unattended-upgrades.
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";

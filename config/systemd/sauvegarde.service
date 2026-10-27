@@ -1,3 +1,4 @@
+# B1, B2 — sauvegarde incrémentale de /srv et /etc vers /sauvegardes
 [Unit]
 Description=Sauvegarde incrémentale de /srv et /etc
 RequiresMountsFor=/sauvegardes

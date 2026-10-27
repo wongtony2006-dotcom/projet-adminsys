@@ -1,2 +1,6 @@
+# C3 — sudo complet pour les administrateurs nominatifs (mot de passe demandé)
 %admins ALL=(ALL:ALL) ALL
+
+# C3 — support ne peut lancer QUE ce script, en root, sans mot de passe.
+# Le script et son dossier appartiennent à root (sinon support pourrait le modifier).
 support ALL=(root) NOPASSWD: /usr/local/sbin/analyse_logs.sh
