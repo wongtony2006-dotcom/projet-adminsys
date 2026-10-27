@@ -1,4 +1,4 @@
-﻿[Unit]
+[Unit]
 Description=Sauvegarde incrémentale de /srv et /etc
 RequiresMountsFor=/sauvegardes
 

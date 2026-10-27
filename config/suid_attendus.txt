@@ -1,4 +1,4 @@
-﻿/usr/bin/chage
+/usr/bin/chage
 /usr/bin/crontab
 /usr/bin/expiry
 /usr/bin/gpasswd

@@ -1,4 +1,4 @@
-﻿# Clés privées et secrets
+# Clés privées et secrets
 id_*
 !*.pub
 *.key
