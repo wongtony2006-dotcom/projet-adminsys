@@ -1,0 +1,12 @@
+login;nom;groupe_principal;groupes_secondaires
+clemence;Clemence Nagel;admins;acces_ssh
+twong;Tony Wong;admins;acces_ssh
+support;Compte support;support;acces_ssh
+jdupont;Jean Dupont;dev;
+tmuller;Thomas Muller;dev;
+lbernard;Lea Bernard;design;
+smorin;Sophie Morin;design;
+proux;Pierre Roux;commercial;
+edurand;Emma Durand;commercial;
+fpetit;Felix Petit;freelance;
+cleroi;Chloe Leroy;freelance;
