@@ -5,8 +5,8 @@ Binôme : Clémence Nagel, Tony Wong.
 
 Le dépôt reconstruit à lui seul un serveur Debian 13 durci pour l'agence Pixelia :
 comptes et droits, SSH, pare-feu, fail2ban, journaux, mises à jour et sauvegardes.
-`installer.sh` applique tout ; `verifier.sh` prouve la conformité (42 tests : 36 pour le
-cahier des charges, 6 pour les recommandations ANSSI ajoutées en bonus).
+`installer.sh` applique tout ; `verifier.sh` prouve la conformité (43 tests : 37 pour le
+cahier des charges, 6 pour les recommandations ajoutées en bonus).
 
 ## Prérequis
 
@@ -20,10 +20,14 @@ cahier des charges, 6 pour les recommandations ANSSI ajoutées en bonus).
 
 ```bash
 sudo apt install -y git
-git clone https://github.com/clemhxr-dev/projet-adminsys.git
-cd projet-adminsys
+sudo git clone https://github.com/clemhxr-dev/projet-adminsys.git /opt/projet-adminsys
+cd /opt/projet-adminsys
 sudo ./installer.sh          # demande le mot de passe des administrateurs qui n'en ont pas
 ```
+
+Le dépôt est cloné en root dans `/opt` : ses scripts sont lancés via sudo, ils doivent
+appartenir à root. Après l'installation, le compte créé avec Debian n'a plus ni sudo ni
+SSH (C3, S3) : on continue avec un compte administrateur, qui lit `/opt/projet-adminsys`.
 
 `installer.sh` est idempotent : il peut être relancé autant de fois que nécessaire,
 il remet le serveur dans l'état décrit par le dépôt.
@@ -62,7 +66,7 @@ sudo ./audit.sh apres                     # audits/resume.md compare les deux é
 | `installer.sh` | script principal : installe et configure tout, dans un ordre sûr |
 | `analyse_logs.sh` | rapport des connexions SSH, alerte au-delà d'un seuil (J4) |
 | `sauvegarde.sh` | sauvegarde incrémentale versionnée de `/srv` et `/etc` (B1) |
-| `verifier.sh` | 42 tests de conformité, une fonction par exigence |
+| `verifier.sh` | 43 tests de conformité, une fonction par exigence |
 | `audit.sh` | audits Lynis, ssh-audit et `verifier.sh`, avant et après installation (bonus) |
 | `audits/` | rapports produits par `audit.sh` ; `resume.md` compare les deux états |
 | `config/cles/` | clés **publiques** des comptes (jamais de clé privée) |

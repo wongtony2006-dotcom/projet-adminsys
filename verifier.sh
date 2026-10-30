@@ -11,6 +11,7 @@ readonly DOSSIER_PROJET
 readonly CSV="$DOSSIER_PROJET/comptes.csv"
 readonly SAUV=/sauvegardes
 readonly SCRIPT_LOGS=/usr/local/sbin/analyse_logs.sh
+readonly FIN_FREELANCE=2027-01-31   # fin de mission des freelances, comme dans creer_comptes.sh
 # SSH (22) + sockets du client DHCP dhcpcd (68 en IPv4, 546 en IPv6) : ce ne sont pas des
 # services, ils servent à obtenir l'adresse IP ; le pare-feu rejette tout trafic non sollicité
 readonly ECOUTES_AUTORISEES=':22$|:68$|:546$'
@@ -96,6 +97,19 @@ test_C1_doublons() {
     if [[ -z $(cut -d: -f1 /etc/passwd | sort | uniq -d) && -z $(cut -d: -f1 /etc/group | sort | uniq -d) ]]; then
         ok C1 "aucun compte ni groupe en double"
     else ko C1 "doublons dans /etc/passwd ou /etc/group"; fi
+}
+
+# Particularité du contexte A : TOUS les membres de freelance expirent à la date fixée
+test_C1_freelance() {
+    local u membres attendu
+    attendu=$(date -d "$FIN_FREELANCE" '+%b %d, %Y')   # format de chage -l (LC_ALL=C)
+    membres=$(membres_groupe freelance)
+    [[ -n $membres ]] || { ko C1 "groupe freelance vide ou absent"; return; }
+    for u in $membres; do
+        chage -l "$u" | grep -q "^Account expires[[:space:]]*: $attendu$" \
+            || { ko C1 "le compte freelance $u n'expire pas le $FIN_FREELANCE"; return; }
+    done
+    ok C1 "comptes freelance expirés automatiquement le $FIN_FREELANCE ($(xargs <<< "$membres"))"
 }
 
 # Tableau C2 de Pixelia : rw = lecture/écriture, r = lecture seule, - = aucun accès
@@ -395,7 +409,7 @@ test_ALGO_ssh() {       # vraies tentatives en local, chacune avec un seul algor
 
 # ---------- programme principal ----------
 TESTS=(
-    test_C1_comptes test_C1_doublons
+    test_C1_comptes test_C1_doublons test_C1_freelance
     test_C2_projets test_C2_externe test_C2_maquettes test_C2_clients test_C2_acl_par_defaut
     test_C3_admins test_C3_support test_C3_personne_dautre test_C3_script_protege
     test_C4_root test_C4_homes
