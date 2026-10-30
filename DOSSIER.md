@@ -121,8 +121,7 @@ les vrais fichiers (`-type f`), car tous les liens symboliques apparaissent en 7
 | Force brute SSH | clé obligatoire, `MaxAuthTries 3`, fail2ban, pénalités OpenSSH | une attaque répartie sur des milliers d'IP contourne le bannissement par IP |
 | Vol d'un mot de passe | inutile à distance : SSH n'accepte que les clés | une clé privée volée avec sa phrase de passe ouvre l'accès ; pas de second facteur |
 | Utilisateur curieux | homes en 700, ACL par groupe, rien pour « other » dans `/srv` | un membre légitime d'un groupe peut copier ce qu'il lit |
-| Compte freelance compromis | pas d'accès SSH, accès limité à `externe`, expiration au 31/01/2027 | une faille du noyau permettrait une élévation de privilèges |
-| Compte support compromis | une seule commande en root, script figé par root, arguments filtrés | l'attaquant lit les journaux SSH (adresses IP, logins) |
+| Compte à droits limités compromis (freelance, support) | freelance : pas d'accès SSH, `externe` seulement, expiration au 31/01/2027 ; support : une seule commande en root, script figé par root, arguments filtrés | une faille du noyau permettrait une élévation de privilèges ; via support, l'attaquant lit les journaux SSH |
 | Rançongiciel | versions datées : retour à une version antérieure | sauvegardes sur la même machine : un attaquant root les chiffre aussi |
 
 ## 5. Procédure de restauration (B4)
@@ -161,8 +160,11 @@ Sur OpenSSH 10.0, ssh-audit signalait les courbes NIST, SHA-1, `umac-64` et les 
 `-etm` ; après correction, plus rien. Il tourne sur la VM vers 127.0.0.1 : depuis l'hôte,
 ses 40 connexions sans authentification font bannir l'hôte avant la fin.
 
-**Lynis** (`audit.sh`, VM vierge puis durcie, détail dans `audits/resume.md`) : indice
-**à compléter** → **à compléter**. 100 n'est pas un objectif ; non appliqué :
+**Lynis** (`audit.sh`, VM vierge puis durcie le 30/10/2026, détail dans `audits/resume.md`) :
+indice **63 → 77** sur 100, avertissements 2 → 1, suggestions 47 → 33 ; ssh-audit :
+6 « fail » et 8 « warn » → 0. L'avertissement restant (NETW-2704) vise un serveur DNS
+transmis par le NAT VirtualBox et injoignable depuis la VM : il ne dépend pas de notre
+configuration. 100 n'est pas un objectif ; non appliqué :
 
 | Suggestion | Raison |
 | --- | --- |
@@ -173,8 +175,10 @@ ses 40 connexions sans authentification font bannir l'hôte avant la fin.
 ## 7. Résultats
 
 `installer.sh` a été lancé sur une VM déjà configurée, relancé sans erreur (idempotence),
-puis lancé depuis le snapshot vierge : 36/36 pour la version initiale. Version finale :
-installation depuis le snapshot vierge, sorties de `verifier.sh` et des audits dans `audits/`.
+puis lancé depuis le snapshot vierge : 36/36 pour la version initiale. Version finale
+(30/10/2026), depuis le snapshot vierge : 42/43 juste après `installer.sh` (une seule
+sauvegarde, test B1 « incrémental »), 43/43 après la deuxième sauvegarde, et toujours 43/43
+après redémarrage. Sorties de `verifier.sh` et des audits dans `audits/`.
 
 ## Sources
 

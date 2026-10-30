@@ -1,0 +1,44 @@
+[OK] C1 chaque compte de comptes.csv existe avec les bons groupes
+[OK] C1 aucun compte ni groupe en double
+[OK] C1 comptes freelance expirés automatiquement le 2027-01-31 (cleroi fpetit)
+[OK] C2 /srv/projets conforme (dev:rw design:r commercial:- freelance:-)
+[OK] C2 /srv/projets/externe conforme (dev:rw design:r commercial:- freelance:rw)
+[OK] C2 /srv/maquettes conforme (dev:r design:rw commercial:r freelance:-)
+[OK] C2 /srv/clients conforme (dev:- design:- commercial:rw freelance:-)
+[OK] C2 ACL par défaut : un fichier créé par un dev est lisible par design
+[OK] C3 les membres de admins ont sudo
+[OK] C3 support ne peut lancer que analyse_logs.sh en root
+[OK] C3 aucun autre compte n'a sudo
+[OK] C3 analyse_logs.sh et son dossier : propriété de root, modifiables par root seul
+[OK] C4 compte root verrouillé
+[OK] C4 répertoires personnels en 700
+[OK] S1 authentification par clé uniquement
+[OK] S1 connexion par mot de passe refusée (test réel)
+[OK] S2 connexion root refusée
+[OK] S3 seul le groupe acces_ssh peut se connecter
+[OK] S4 MaxAuthTries = 3 (4 au plus)
+[OK] S4 inactivité limitée (ChannelTimeout global=15m, client muet coupé après 600 s)
+[OK] S5 configuration dans sshd_config.d, validée par sshd -t
+[OK] J1 fail2ban : jail sshd active (bannissement après 3 échecs)
+[OK] J2 pare-feu : politique par défaut drop en entrée
+[OK] J2 pare-feu : SSH et connexions établies autorisés
+[OK] J2 pare-feu rechargé au démarrage (service nftables activé)
+[OK] J3 journal persistant (4 démarrage(s) conservé(s))
+[OK] J4 analyse_logs.sh : code 0 sous le seuil, 1 au-dessus, 2 si erreur
+[OK] B1 2 version(s) datée(s), 7 au plus
+[OK] B1 incrémental : fichier inchangé partagé entre deux versions (même inode)
+[OK] B1 ACL conservées dans la sauvegarde
+[OK] B2 sauvegarde planifiée (timer actif) et journalisée
+[OK] B3 sauvegardes accessibles aux seuls administrateurs
+[OK] B4 restauration d'un fichier réussie, procédure documentée
+[OK] D1 mises à jour de sécurité automatiques actives
+[OK] D2 seul SSH écoute sur le réseau
+[OK] D3 aucun fichier modifiable par tous hors répertoires temporaires
+[OK] D3 aucun SUID/SGID en dehors de la liste justifiée
+[OK] R9-R14 62 paramètres du noyau conformes (sysctl)
+[OK] R9-R14 paramètres du noyau réappliqués à chaque démarrage (/etc/sysctl.d)
+[OK] R10 modules inutiles impossibles à charger : dccp sctp rds tipc usb-storage firewire-ohci
+[OK] R28 /tmp monté nosuid,nodev,noexec : un programme copié dans /tmp ne se lance pas
+[OK] R36 umask 027 dans les sessions (testé avec jdupont)
+[OK] ALGO SSH refuse les courbes NIST, SHA-1 et la clé d'hôte ECDSA (tests réels)
+--- 43 / 43 tests réussis

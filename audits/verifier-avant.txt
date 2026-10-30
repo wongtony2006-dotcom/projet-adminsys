@@ -1,0 +1,49 @@
+[KO] C1 clemence : mauvais groupe principal
+[OK] C1 aucun compte ni groupe en double
+[KO] C1 groupe freelance vide ou absent
+[KO] C2 /srv/projets : le groupe dev n'a pas le droit attendu (rw)
+[KO] C2 /srv/projets/externe : le groupe dev n'a pas le droit attendu (rw)
+[KO] C2 /srv/maquettes : le groupe dev n'a pas le droit attendu (r)
+[KO] C2 /srv/clients : le groupe commercial n'a pas le droit attendu (rw)
+sudo: unknown user lbernard
+sudo: error initializing audit plugin sudoers_audit
+[KO] C2 ACL par défaut absente ou incorrecte sur /srv/projets
+[OK] C3 les membres de admins ont sudo
+sudo: unknown user support
+[KO] C3 règles sudo de support non conformes
+[KO] C3 clemence a des droits sudo
+stat: cannot statx '/usr/local/sbin/analyse_logs.sh': No such file or directory
+[KO] C3 analyse_logs.sh ou /usr/local/sbin modifiable par un autre que root
+[OK] C4 compte root verrouillé
+[OK] C4 répertoires personnels en 700
+[KO] S1 mot de passe ou keyboard-interactive encore autorisé
+[KO] S1 réponse inattendue du serveur SSH
+[KO] S2 PermitRootLogin n'est pas à no
+[KO] S3 AllowGroups différent de acces_ssh
+[KO] S4 MaxAuthTries = 6 (4 au plus attendu)
+[KO] S4 délai d'inactivité absent ou supérieur à 15 minutes
+[KO] S5 sshd -t échoue ou fichier 50-projet.conf absent
+[KO] J1 fail2ban arrêté ou jail sshd inactive
+[KO] J2 politique par défaut différente de drop, ou table absente
+[KO] J2 règle SSH ou connexions établies manquante
+[KO] J2 le pare-feu ne survivra pas à un redémarrage
+[KO] J3 journal non persistant
+[KO] J4 codes de sortie 127 127 127 (attendus : 0 1 2)
+[KO] B1 0 version(s) : attendu entre 1 et 7
+[KO] B1 une seule version : lance « sudo systemctl start sauvegarde.service » puis relance verifier.sh
+[KO] B1 ACL absentes de la dernière sauvegarde
+[KO] B2 timer inactif ou aucune exécution dans le journal
+stat: cannot statx '/sauvegardes': No such file or directory
+[KO] B3 droits de /sauvegardes non conformes
+[KO] B4 aucune version à restaurer
+[KO] D1 unattended-upgrades non configuré
+[OK] D2 seul SSH écoute sur le réseau
+[OK] D3 aucun fichier modifiable par tous hors répertoires temporaires
+[KO] D3 SUID/SGID non prévus : /usr/bin/chfn /usr/bin/chsh /usr/lib/openssh/ssh-keysign 
+[KO] R9-R14 paramètres du noyau différents : kernel/kptr_restrict=0 kernel/sysrq=438 kernel/unprivileged_bpf_disabled=2 net/core/bpf_jit_harden=0 dev/tty/ldisc_autoload=1 kernel/yama/ptrace_scop
+[KO] R9-R14 /etc/sysctl.d/99-zz-projet.conf absent ou différent du dépôt
+[KO] R10 le module dccp peut être chargé, ou l'est déjà
+[KO] R28 /tmp sans nosuid, nodev ou noexec (maintenant ou au prochain démarrage)
+[KO] R36 umask de jdupont : ? (0027 attendu, UMASK dans /etc/login.defs)
+[KO] ALGO algorithme faible accepté : KexAlgorithms=ecdh-sha2-nistp256
+--- 6 / 43 tests réussis
