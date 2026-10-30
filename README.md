@@ -1,4 +1,4 @@
-# Pixelia — durcissement d'un serveur Debian 13 (contexte A)
+# Pixelia — durcissement d'un serveur Debian 13 (contexte A) 
 
 Projet XTI302-CYB (Administration systèmes avancée et scripting), Efrei Paris.
 Binôme : Clémence Nagel, Tony Wong.
