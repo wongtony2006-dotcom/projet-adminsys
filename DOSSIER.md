@@ -4,7 +4,8 @@ Projet XTI302-CYB, contexte A (Pixelia). Binôme : Clémence Nagel, Tony Wong.
 
 Le serveur est une Debian 13 minimale. Toute la configuration vient du dépôt :
 `installer.sh` la reconstruit depuis le snapshot vierge et `verifier.sh` la contrôle
-par 36 tests (sortie 0 = conforme). Les numéros ANSSI renvoient au guide
+par 42 tests (sortie 0 = conforme) : 36 pour le cahier des charges, 6 pour les
+recommandations ajoutées en bonus (section 6). Les numéros ANSSI renvoient au guide
 « Recommandations de configuration d'un système GNU/Linux » (BP-028, v2.0).
 
 ## 1. Tableau de conformité
@@ -32,6 +33,8 @@ par 36 tests (sortie 0 = conforme). Les numéros ANSSI renvoient au guide
 | D2 services | seul `sshd` écoute ; sockets du client DHCP justifiées | `test_D2` | R58 (paquets nécessaires), R62 (services nécessaires) |
 | D3 droits spéciaux | aucun fichier modifiable par tous ; SUID inutiles retirés ; SUID/SGID restants listés et justifiés | `test_D3_ecriture`, `test_D3_suid` | R54 (sticky bit), R56 et R57 (setuid/setgid) |
 
+Mesures supplémentaires (noyau, modules, `/tmp`, umask, algorithmes SSH, audits) : section 6.
+
 ## 2. Choix techniques
 
 **Comptes et mots de passe.** Seuls les administrateurs ont un mot de passe : il sert à
@@ -55,7 +58,8 @@ avec `--no-pager` (un pager permet `!sh`) et refuse tout argument hors liste.
 **SSH.** Un fichier `50-projet.conf` dans `sshd_config.d` : lu avant `sshd_config`, et la
 première valeur lue l'emporte. `ClientAliveInterval` ne coupe qu'un client injoignable ;
 `ChannelTimeout global=15m` coupe une session réellement inactive. `installer.sh` refuse
-de durcir SSH si aucun administrateur n'a de clé, et valide par `sshd -t`.
+de durcir SSH si aucun administrateur n'a de clé, et valide par `sshd -t`. Les algorithmes
+cryptographiques sont restreints en bonus (section 6).
 
 **fail2ban.** Debian 13 n'a plus `/var/log/auth.log` (rsyslog n'est plus installé) : la
 jail lit le journal systemd. Le mode `aggressive` compte aussi les déconnexions avant
@@ -123,6 +127,8 @@ les vrais fichiers (`-type f`), car tous les liens symboliques apparaissent en 7
 | Compte freelance compromis | pas d'accès SSH, accès limité à `externe`, expiration au 31/01/2027 | une faille du noyau permettrait une élévation de privilèges |
 | Compte support compromis | une seule commande en root, script figé par root, arguments filtrés | l'attaquant lit les journaux SSH (adresses IP, logins) |
 | Rançongiciel | versions datées : retour à une version antérieure | sauvegardes sur la même machine : un attaquant root les chiffre aussi |
+| Programme déposé dans `/tmp` (bonus) | `/tmp` en `noexec` : le programme ne se lance pas | un interpréteur le lit quand même (`bash /tmp/script.sh`) |
+| Exploit local du noyau (bonus) | adresses du noyau masquées, eBPF, `perf` et `ptrace` restreints, protocoles inutiles non chargeables | une faille du noyau non corrigée reste exploitable : seules les mises à jour la ferment |
 
 ## 5. Procédure de restauration (B4)
 
@@ -141,11 +147,78 @@ Scénario testé : création de `rapport.txt` par un compte dev, sauvegarde, sup
 fichier, nouvelle sauvegarde, puis restauration depuis la première version ; le contenu et
 les ACL héritées sont retrouvés.
 
-## 6. Résultats
+## 6. Bonus : recommandations ANSSI supplémentaires
 
-`installer.sh` a été lancé sur la VM déjà configurée (migration depuis la première version
-du projet), relancé une seconde fois sans erreur (idempotence), puis lancé depuis le
-snapshot vierge. `verifier.sh` : 36 tests sur 36 réussis.
+Mesures ajoutées au-delà du cahier des charges. Chacune est appliquée par `installer.sh`
+(étapes 14 à 17, et le fichier SSH pour les algorithmes) et contrôlée par `verifier.sh`.
+
+| Mesure | Réalisation | Test (`verifier.sh`) | Référence |
+| --- | --- | --- | --- |
+| Paramètres du noyau | `config/sysctl.d/99-zz-projet.conf` : ASLR complet ; `dmesg` et adresses du noyau masqués ; eBPF et `perf` interdits aux utilisateurs ; `ptrace` limité aux descendants ; ni redirection ICMP ni routage imposé par la source ; filtrage strict de l'adresse source ; fichiers d'autrui protégés dans `/tmp` | `test_R9_R14_noyau` (chaque valeur relue dans `/proc/sys`, pour chaque carte réseau), `test_R9_R14_persistant` | R9, R11, R12, R14 |
+| Modules inutiles | `install <module> /bin/false` pour DCCP, SCTP, RDS, TIPC, `usb-storage` et `firewire-ohci` | `test_R10_modules` (`modprobe -n` : simulation, rien n'est chargé) | R10 (en partie) |
+| `/tmp` | tmpfs monté `nosuid,nodev,noexec` (fichier complémentaire de `tmp.mount`) ; debconf exécute ses scripts dans `/var/tmp` | `test_R28_tmp` : un programme copié dans `/tmp` ne se lance pas | R28 |
+| umask | `UMASK 027` dans `/etc/login.defs`, appliqué par `pam_umask` à toute session (SSH, `su`, `sudo`, cron) | `test_R36_umask` : umask réel d'un compte qui ouvre une session | R36 |
+| Algorithmes SSH | échange de clés post-quantique ou Curve25519 ; MAC « encrypt-then-MAC » en SHA-2 ; clés d'hôte Ed25519 et RSA ; clé RSA d'utilisateur de 3072 bits au moins | `test_ALGO_ssh` : trois vraies connexions, chacune avec un seul algorithme faible, toutes refusées | ssh-audit, guide ANSSI OpenSSH |
+| Audits | `audit.sh` : Lynis, ssh-audit et `verifier.sh`, avant et après `installer.sh` | `audits/resume.md` | — |
+
+**Ordre de lecture des fichiers sysctl.** Les fichiers sont lus par ordre alphabétique et
+la dernière valeur l'emporte. Le nôtre s'appelle `99-zz-projet.conf` pour passer après
+`99-protect-links.conf` (paquet procps), qui remettait `fs.protected_fifos` à 1. C'est
+l'inverse de SSH, où la première valeur lue gagne (d'où `50-projet.conf`). Une ligne
+`net.ipv4.conf.*.x` vaut pour toutes les cartes réseau, même ajoutées plus tard. Mais une
+valeur explicite l'emporte sur un motif `*`. Or `50-default.conf` de systemd règle
+explicitement `rp_filter` (mode souple, 2) et `accept_source_route` pour `default`, et
+écarte `all` de ses motifs : ces deux clés sont donc aussi écrites pour `all` et `default`.
+
+**umask 027 plutôt que 077.** R36 demande 0077 pour les shells et 0027 pour les services.
+Ici, seuls les administrateurs et `support` ouvrent des sessions ; les homes sont en 700
+et, dans `/srv`, l'ACL par défaut remplace l'umask. `pam_umask` s'applique aussi aux commandes lancées par
+`sudo` : avec 0077, un fichier système créé à la main par un administrateur deviendrait
+illisible pour les services. `support` obtient 0007 : son groupe principal porte son nom
+(`USERGROUPS_ENAB yes`) et ne contient que lui.
+
+**noexec : la limite.** `noexec` empêche de lancer un programme posé dans `/tmp`, pas de
+le faire lire par un interpréteur (`bash /tmp/script.sh` fonctionne encore). Il arrête
+surtout les binaires téléchargés par un attaquant. Avant une installation, debconf extrait
+puis lance des scripts de configuration des paquets : `APT::ExtractTemplates::TempDir
+"/var/tmp"` les place hors de `/tmp`.
+
+**Algorithmes SSH.** Sur les valeurs par défaut d'OpenSSH 10.0, ssh-audit signale les
+courbes NIST (`ecdh-sha2-nistp*`, clé d'hôte ECDSA), SHA-1 (`hmac-sha1*`), les MAC à
+étiquette de 64 bits (`umac-64*`) et les MAC calculés sur le texte en clair (sans `-etm`).
+Ils sont retirés. `chacha20-poly1305` reste : ssh-audit ne le cite qu'à titre d'information,
+pour l'attaque Terrapin (CVE-2023-48795), que le « strict KEX » d'OpenSSH bloque dès que le
+client le gère aussi. Les tests de `verifier.sh` se connectent en local et échouent exprès ;
+OpenSSH 10 bloque un moment une adresse qui accumule ces échecs, donc la boucle locale en
+est exemptée (`PerSourcePenaltyExemptList`), comme dans fail2ban (`ignoreip`).
+
+**Non retenu.**
+
+| Recommandation | Raison |
+| --- | --- |
+| R10 complète (`kernel.modules_disabled = 1`) | nftables et fail2ban chargent leurs modules à la demande ; plus aucun module ne pourrait être chargé avant le redémarrage suivant |
+| R13 (désactiver IPv6) | le NAT VirtualBox fournit une adresse IPv6 ; IPv6 est durci (redirections, routage par la source) et filtré par la table `inet` de nftables |
+| `kernel.panic_on_oops` (R9) | une erreur du noyau figerait la VM (`kernel.panic = 0`) ; un administrateur choisit quand redémarrer |
+| R28 pour `/var/tmp` (partition séparée, `noexec`) | `/var/tmp` est sur la partition racine ; créer une partition demanderait de réinstaller la VM |
+| R5 (mot de passe GRUB) | qui accède à la console de la VM contrôle déjà l'hyperviseur et peut lire le disque directement |
+| R73 (auditd), R76 (AIDE) | suggérés aussi par Lynis : pistes d'amélioration, hors du périmètre demandé |
+
+**Audits avant / après.** `audit.sh` installe Lynis et ssh-audit (paquets Debian), puis
+enregistre dans `audits/` un audit Lynis complet (`lynis audit system`), ssh-audit sur le
+port 22 et la sortie de `verifier.sh`, sans rien modifier d'autre. Procédure : VM restaurée
+sur le snapshot vierge, `sudo ./audit.sh avant`, `sudo ./installer.sh`, seconde sauvegarde,
+`sudo ./audit.sh apres`. `audits/resume.md` met les deux états côte à côte : tests de
+`verifier.sh` réussis, indice de durcissement Lynis, avertissements et suggestions,
+points « fail » et « warn » de ssh-audit.
+
+## 7. Résultats
+
+Version du cahier des charges : `installer.sh` a été lancé sur la VM déjà configurée
+(migration depuis la première version du projet), relancé une seconde fois sans erreur
+(idempotence), puis lancé depuis le snapshot vierge. `verifier.sh` : 36 tests sur 36 réussis.
+
+Version avec le bonus : installation depuis le snapshot vierge selon la procédure de la
+section 6 ; les résultats sont dans `audits/resume.md` et `audits/verifier-apres.txt`.
 
 ## Sources
 
@@ -153,3 +226,6 @@ snapshot vierge. `verifier.sh` : 36 tests sur 36 réussis.
 - [sshd_config(5), Debian 13 / OpenSSH 10.0](https://manpages.debian.org/trixie/openssh-server/sshd_config.5.en.html)
 - [Notes de version de Debian 13 : rsyslog n'est plus installé par défaut](https://www.debian.org/releases/trixie/release-notes/issues.fr.html)
 - [fail2ban sur Debian 13 : backend systemd, nftables, `flush ruleset`](https://www.kernelhost.com/en/blog/set-up-fail2ban)
+- [ANSSI — Recommandations pour un usage sécurisé d'(Open)SSH (DAT-NT-007)](https://cyber.gouv.fr/sites/default/files/2014/01/NT_OpenSSH.pdf)
+- [ssh-audit](https://github.com/jtesta/ssh-audit) et [Lynis](https://cisofy.com/lynis/)
+- [sysctl.d(5) : ordre des fichiers, motifs `*`](https://www.freedesktop.org/software/systemd/man/latest/sysctl.d.html)
