@@ -14,6 +14,8 @@ readonly SCRIPT_LOGS=/usr/local/sbin/analyse_logs.sh
 # SSH (22) + sockets du client DHCP dhcpcd (68 en IPv4, 546 en IPv6) : ce ne sont pas des
 # services, ils servent à obtenir l'adresse IP ; le pare-feu rejette tout trafic non sollicité
 readonly ECOUTES_AUTORISEES=':22$|:68$|:546$'
+readonly SYSCTL_PROJET="$DOSSIER_PROJET/config/sysctl.d/99-zz-projet.conf"
+readonly MODULES_PROJET="$DOSSIER_PROJET/config/modprobe.d/projet.conf"
 
 REUSSIS=0
 TOTAL=0
@@ -326,6 +328,68 @@ test_D3_suid() {
     else ko D3 "SUID/SGID non prévus : $(tr '\n' ' ' <<< "$nouveaux")"; fi
 }
 
+# ---------- bonus : recommandations ANSSI supplémentaires ----------
+# Chaque « clé = valeur » du fichier du dépôt doit être en vigueur. Un « * » dans la clé
+# vaut pour toutes les cartes réseau (net.ipv4.conf.*.rp_filter : all, default, lo…).
+test_R9_R14_noyau() {
+    local cle valeur f actuel n=0 ecarts=""
+    while read -r cle _ valeur; do
+        for f in /proc/sys/${cle//./\/}; do
+            n=$((n + 1))
+            actuel=$(cat "$f" 2>/dev/null); actuel=${actuel//$'\t'/ }
+            [[ $actuel == "$valeur" ]] || ecarts+=" ${f#/proc/sys/}=${actuel:-?}"
+        done
+    done < <(grep -E '^[a-z]' "$SYSCTL_PROJET")
+    if [[ -z $ecarts ]]; then ok R9-R14 "$n paramètres du noyau conformes (sysctl)"
+    else ko R9-R14 "paramètres du noyau différents :$(cut -c 1-150 <<< "$ecarts")"; fi
+}
+
+test_R9_R14_persistant() {
+    if cmp -s "$SYSCTL_PROJET" /etc/sysctl.d/99-zz-projet.conf; then
+        ok R9-R14 "paramètres du noyau réappliqués à chaque démarrage (/etc/sysctl.d)"
+    else ko R9-R14 "/etc/sysctl.d/99-zz-projet.conf absent ou différent du dépôt"; fi
+}
+
+test_R10_modules() {   # modprobe -n : simulation, aucun module n'est réellement chargé
+    local m
+    for m in $(awk '$1 == "install" {print $2}' "$MODULES_PROJET"); do
+        # /proc/modules écrit les noms avec « _ » (usb-storage y devient usb_storage)
+        if ! modprobe -n -v "$m" 2>/dev/null | grep -q 'install /bin/false' || grep -qs "^${m//-/_} " /proc/modules; then
+            ko R10 "le module $m peut être chargé, ou l'est déjà"; return
+        fi
+    done
+    ok R10 "modules inutiles impossibles à charger : $(awk '$1 == "install" {print $2}' "$MODULES_PROJET" | xargs)"
+}
+
+test_R28_tmp() {        # vrai essai : un programme copié dans /tmp ne doit pas démarrer
+    local options prog="/tmp/.verif_exec_$$"
+    options=",$(findmnt -no OPTIONS /tmp 2>/dev/null),"
+    FICHIERS_TEMP+=("$prog")
+    if [[ $options == *,nosuid,* && $options == *,nodev,* && $options == *,noexec,* ]] \
+        && cp /usr/bin/true "$prog" && ! "$prog" 2>/dev/null \
+        && systemctl cat tmp.mount 2>/dev/null | grep '^Options=' | tail -n 1 | grep -q noexec; then
+        ok R28 "/tmp monté nosuid,nodev,noexec : un programme copié dans /tmp ne se lance pas"
+    else ko R28 "/tmp sans nosuid, nodev ou noexec (maintenant ou au prochain démarrage)"; fi
+}
+
+test_R36_umask() {      # umask réellement obtenu par un compte en ouvrant une session
+    local u m; u=$(premier_du_groupe dev); m=$(sudo -u "$u" sh -c umask 2>/dev/null)
+    if grep -qE '^UMASK[[:space:]]+027$' /etc/login.defs && [[ $m == 0027 ]]; then
+        ok R36 "umask 027 dans les sessions (testé avec $u)"
+    else ko R36 "umask de $u : ${m:-?} (0027 attendu, UMASK dans /etc/login.defs)"; fi
+}
+
+test_ALGO_ssh() {       # vraies tentatives en local, chacune avec un seul algorithme faible
+    local essai sortie
+    for essai in "KexAlgorithms=ecdh-sha2-nistp256:key exchange" "MACs=hmac-sha1:MAC" \
+                 "HostKeyAlgorithms=ecdsa-sha2-nistp256:host key type"; do
+        sortie=$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                     -o ConnectTimeout=5 -o Ciphers=aes128-ctr -o "${essai%%:*}" support@127.0.0.1 true 2>&1)
+        [[ $sortie == *"no matching ${essai#*:}"* ]] || { ko ALGO "algorithme faible accepté : ${essai%%:*}"; return; }
+    done
+    ok ALGO "SSH refuse les courbes NIST, SHA-1 et la clé d'hôte ECDSA (tests réels)"
+}
+
 # ---------- programme principal ----------
 TESTS=(
     test_C1_comptes test_C1_doublons
@@ -336,6 +400,7 @@ TESTS=(
     test_J1 test_J2_politique test_J2_ssh_et_etablies test_J2_persistant test_J3 test_J4
     test_B1_versions test_B1_incremental test_B1_acl test_B2 test_B3 test_B4
     test_D1 test_D2 test_D3_ecriture test_D3_suid
+    test_R9_R14_noyau test_R9_R14_persistant test_R10_modules test_R28_tmp test_R36_umask test_ALGO_ssh
 )
 
 main() {
