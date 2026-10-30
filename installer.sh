@@ -166,15 +166,20 @@ configurer_sauvegarde() {
     fi
 }
 
+# regler_login_defs <paramètre> <valeur> : remplace la ligne active du paramètre ou l'ajoute
+regler_login_defs() {
+    if grep -q "^$1" /etc/login.defs; then
+        sed -i "s/^$1.*/$1\t$2/" /etc/login.defs
+    else
+        printf '%s\t%s\n' "$1" "$2" >> /etc/login.defs
+    fi
+}
+
 # C4 — root verrouillé, répertoires personnels en 0700 (aussi pour les futurs comptes)
 verrouiller_root_et_homes() {
     passwd -l root >/dev/null
     chmod 700 /home/*/
-    if grep -q '^HOME_MODE' /etc/login.defs; then
-        sed -i 's/^HOME_MODE.*/HOME_MODE\t0700/' /etc/login.defs
-    else
-        printf 'HOME_MODE\t0700\n' >> /etc/login.defs
-    fi
+    regler_login_defs HOME_MODE 0700
 }
 
 # D3 — retrait du bit SUID ; dpkg-statoverride conserve le réglage lors des mises à jour
@@ -186,6 +191,38 @@ retirer_suid_inutiles() {
             dpkg-statoverride --update --add root root 0755 "$f"
         fi
     done
+}
+
+# Bonus R9 à R14 — paramètres du noyau : appliqués tout de suite et à chaque démarrage
+configurer_noyau() {
+    install -D -m 0644 "$CONFIG/sysctl.d/99-zz-projet.conf" /etc/sysctl.d/99-zz-projet.conf
+    systemctl restart systemd-sysctl || erreur "paramètres du noyau non appliqués (journalctl -u systemd-sysctl)"
+}
+
+# Bonus R10 — modules inutiles (protocoles réseau, stockage amovible) : chargement refusé
+bloquer_modules() {
+    install -D -m 0644 "$CONFIG/modprobe.d/projet.conf" /etc/modprobe.d/projet.conf
+}
+
+# Bonus R28 — /tmp sans exécution, sans SUID, sans fichiers de périphérique
+configurer_tmp() {
+    install -D -m 0644 "$CONFIG/systemd/tmp.mount.d/noexec.conf" \
+        /etc/systemd/system/tmp.mount.d/noexec.conf
+    # debconf exécute des scripts pendant les installations : dans /var/tmp désormais
+    install -m 0644 "$CONFIG/apt/50extracttemplates" /etc/apt/apt.conf.d/50extracttemplates
+    systemctl daemon-reload
+    if mountpoint -q /tmp; then
+        mount -o remount,nosuid,nodev,noexec /tmp   # tout de suite, sans redémarrer
+    else
+        echo "ATTENTION : /tmp n'est pas un système de fichiers séparé (tmp.mount masqué ?)" >&2
+    fi
+}
+
+# Bonus R36 — umask 027 : fichiers créés illisibles par les « autres ».
+# pam_umask (déjà dans common-session sous Debian 13) lit cette valeur pour TOUTE
+# session : SSH, su, sudo, cron.
+configurer_umask() {
+    regler_login_defs UMASK 027
 }
 
 main() {
@@ -203,7 +240,11 @@ main() {
     etape "11. Disque et sauvegardes (B1 à B3)";       configurer_sauvegarde
     etape "12. Root et répertoires personnels (C4)";  verrouiller_root_et_homes
     etape "13. Bits SUID inutiles (D3)";               retirer_suid_inutiles
-    etape "14. Vérification";                          bash "$DOSSIER_PROJET/verifier.sh" || true
+    etape "14. Noyau : sysctl (bonus R9 à R14)";       configurer_noyau
+    etape "15. Modules inutiles (bonus R10)";          bloquer_modules
+    etape "16. /tmp sans exécution (bonus R28)";       configurer_tmp
+    etape "17. umask 027 (bonus R36)";                 configurer_umask
+    etape "18. Vérification";                          bash "$DOSSIER_PROJET/verifier.sh" || true
 }
 
 main "$@"

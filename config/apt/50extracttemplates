@@ -1,0 +1,3 @@
+// Bonus R28 — /tmp est monté noexec. Avant une installation, debconf extrait les
+// scripts de configuration des paquets et les exécute : il le fait dans /var/tmp.
+APT::ExtractTemplates::TempDir "/var/tmp";
