@@ -229,13 +229,16 @@ test_J2_ssh_et_etablies() {
 }
 
 test_J2_persistant() {
-    if [[ $(systemctl is-enabled nftables 2>/dev/null) == enabled ]] && grep -q 'policy drop' /etc/nftables.conf; then
+    # la chaîne d'entrée précisément : « policy drop » figure aussi dans la chaîne transfert
+    if [[ $(systemctl is-enabled nftables 2>/dev/null) == enabled ]] \
+        && grep -qE 'hook input .*policy drop' /etc/nftables.conf; then
         ok J2 "pare-feu rechargé au démarrage (service nftables activé)"
     else ko J2 "le pare-feu ne survivra pas à un redémarrage"; fi
 }
 
-test_J3() {
-    if systemd-analyze cat-config systemd/journald.conf | grep -q '^Storage=persistent' && [[ -d /var/log/journal ]]; then
+test_J3() {   # dernière valeur lue = valeur appliquée (un fichier ajouté après le nôtre l'emporte)
+    local stockage; stockage=$(systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep '^Storage=' | tail -n 1)
+    if [[ $stockage == Storage=persistent && -d /var/log/journal ]]; then
         ok J3 "journal persistant ($(journalctl --list-boots 2>/dev/null | wc -l) démarrage(s) conservé(s))"
     else ko J3 "journal non persistant"; fi
 }
